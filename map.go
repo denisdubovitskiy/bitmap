@@ -11,26 +11,28 @@ type Bitmap interface {
 	Has(n int) bool
 }
 
-func New(pieces int) Bitmap {
-	bucketsCount := int(math.Ceil(float64(pieces) / 64))
+func New(size int) Bitmap {
+	bucketsCount := int(math.Ceil(float64(size) / 8))
 	if bucketsCount == 0 {
 		bucketsCount = 1
 	}
 
 	return &bitmap{
-		buckets: make([]uint64, bucketsCount),
+		buckets: make([]uint8, bucketsCount),
 		muxes:   make([]sync.RWMutex, bucketsCount),
 	}
 }
 
+const size = 8 // to lock small pieces
+
 type bitmap struct {
 	muxes   []sync.RWMutex
-	buckets []uint64
+	buckets []uint8
 }
 
 func (c bitmap) Set(n int) {
-	b := int(float64(n) / 64)
-	i := uint(math.Abs(float64((b * 64) - n)))
+	b := int(float64(n) / 8)
+	i := uint(math.Abs(float64((b * 8) - n)))
 
 	c.muxes[b].Lock()
 	defer c.muxes[b].Unlock()
@@ -39,8 +41,8 @@ func (c bitmap) Set(n int) {
 }
 
 func (c bitmap) Clear(n int) {
-	b := int(float64(n) / 64)
-	i := uint(math.Abs(float64((b * 64) - n)))
+	b := int(float64(n) / 8)
+	i := uint(math.Abs(float64((b * 8) - n)))
 
 	c.muxes[b].Lock()
 	defer c.muxes[b].Unlock()
@@ -49,8 +51,8 @@ func (c bitmap) Clear(n int) {
 }
 
 func (c *bitmap) Has(n int) bool {
-	b := int(float64(n) / 64)
-	i := uint(math.Abs(float64((b * 64) - n)))
+	b := int(float64(n) / 8)
+	i := uint(math.Abs(float64((b * 8) - n)))
 
 	c.muxes[b].RLock()
 	defer c.muxes[b].RUnlock()

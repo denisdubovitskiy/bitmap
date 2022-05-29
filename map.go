@@ -5,6 +5,8 @@ import (
 	"sync"
 )
 
+const bucketSize = 8 // to lock small pieces
+
 type Bitmap interface {
 	Set(n int)
 	Clear(n int)
@@ -12,7 +14,7 @@ type Bitmap interface {
 }
 
 func New(size int) Bitmap {
-	bucketsCount := int(math.Ceil(float64(size) / 8))
+	bucketsCount := int(math.Ceil(float64(size) / bucketSize))
 	if bucketsCount == 0 {
 		bucketsCount = 1
 	}
@@ -23,16 +25,14 @@ func New(size int) Bitmap {
 	}
 }
 
-const size = 8 // to lock small pieces
-
 type bitmap struct {
 	muxes   []sync.RWMutex
 	buckets []uint8
 }
 
 func (c bitmap) Set(n int) {
-	b := int(float64(n) / 8)
-	i := uint(math.Abs(float64((b * 8) - n)))
+	b := int(float64(n) / bucketSize)
+	i := uint(math.Abs(float64((b * bucketSize) - n)))
 
 	c.muxes[b].Lock()
 	defer c.muxes[b].Unlock()
@@ -41,8 +41,8 @@ func (c bitmap) Set(n int) {
 }
 
 func (c bitmap) Clear(n int) {
-	b := int(float64(n) / 8)
-	i := uint(math.Abs(float64((b * 8) - n)))
+	b := int(float64(n) / bucketSize)
+	i := uint(math.Abs(float64((b * bucketSize) - n)))
 
 	c.muxes[b].Lock()
 	defer c.muxes[b].Unlock()
@@ -51,8 +51,8 @@ func (c bitmap) Clear(n int) {
 }
 
 func (c *bitmap) Has(n int) bool {
-	b := int(float64(n) / 8)
-	i := uint(math.Abs(float64((b * 8) - n)))
+	b := int(float64(n) / bucketSize)
+	i := uint(math.Abs(float64((b * bucketSize) - n)))
 
 	c.muxes[b].RLock()
 	defer c.muxes[b].RUnlock()
